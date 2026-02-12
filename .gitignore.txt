@@ -21,3 +21,5 @@ data/bulk_data.json.gz
 # OS
 .DS_Store
 Thumbs.db
+
+docs/
