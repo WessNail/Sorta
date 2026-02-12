@@ -6,8 +6,16 @@ import json
 import sqlite3
 import os
 from database_builder import get_database_connection
+import gzip
+from flask import make_response, jsonify
 
 app = Flask(__name__)
+
+from flask_compress import Compress
+
+# After app = Flask(__name__)
+compress = Compress()
+compress.init_app(app)
 
 # HTML template with PROPER indentation
 HTML_TEMPLATE = '''<!DOCTYPE html>
@@ -924,7 +932,14 @@ def process_list():
         }
         
         print(f"Processed {total_cards_found} of {total_cards_input} cards, {len(not_found)} not found")
-        return jsonify(response)
+        # Compress the response to avoid size limits
+        response_json = jsonify(response)
+        response_data = response_json.get_data()
+        compressed = gzip.compress(response_data)
+        compressed_response = make_response(compressed)
+        compressed_response.headers['Content-Encoding'] = 'gzip'
+        compressed_response.headers['Content-Type'] = 'application/json'
+        return compressed_response
         
     except Exception as e:
         print(f"Error: {str(e)}")
