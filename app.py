@@ -737,25 +737,29 @@ def process_list():
             unique_card_names[card_name].append(entry)
         
         # Step 2: Get ALL cards from database in ONE query
-        all_names = list(unique_card_names.keys())
-        
+        # Store ORIGINAL list for query parameters
+        all_names_original = list(unique_card_names.keys())
+
+        # Create EXPANDED list for searching DFCs
+        all_names_expanded = all_names_original.copy()
+
         # Add DFC front faces to the search list
-        for name in all_names[:]:  # Iterate over a copy
+        for name in all_names_original[:]:  # Use original list
             if ' // ' in name:
                 front_face = name.split(' // ')[0]
-                if front_face not in all_names:
-                    all_names.append(front_face)
-        
-        # Create placeholders for SQL IN clause
-        placeholders = ','.join(['?' for _ in all_names])
-        
-        # Query for exact matches
+                if front_face not in all_names_expanded:
+                    all_names_expanded.append(front_face)
+
+        # Create placeholders using expanded list (this determines WHERE clause)
+        placeholders = ','.join(['?' for _ in all_names_expanded])
+
+        # Query for exact matches - USE ORIGINAL list for parameters!
         cursor.execute(f"""
             SELECT name, asciiName, colors, type, types, rarity, manaCost, hasFoil
             FROM cards 
             WHERE LOWER(name) IN ({placeholders})
                OR LOWER(asciiName) IN ({placeholders})
-        """, [name.lower() for name in search_names] * 2)
+        """, [name.lower() for name in all_names_original] * 2)  # ← USING ORIGINAL LIST
         
         # Put all results into a lookup dictionary
         card_db = {}
