@@ -747,34 +747,28 @@ def process_list():
         
         print(f"Unique card names: {len(unique_card_names)}")        
         
-        # Step 2: Get ALL cards from database in ONE query
-        # Store ORIGINAL list for query parameters
-        all_names_original = list(unique_card_names.keys())
-        # DEBUGGING CODE
-        print(f"All names original: {len(all_names_original)}")
+        # Step 2: Get ALL cards from database in ONE query 
         
-        # Create EXPANDED list for searching DFCs
-        all_names_expanded = all_names_original.copy()
-        # DEBUGGING CODE
-        print(f"All names expanded: {len(all_names_expanded)}")
-                
+        # Get ALL cards from database in ONE query
+        all_names = list(unique_card_names.keys())
+
         # Add DFC front faces to the search list
-        for name in all_names_original[:]:  # Use original list
+        for name in all_names[:]:
             if ' // ' in name:
                 front_face = name.split(' // ')[0]
-                if front_face not in all_names_expanded:
-                    all_names_expanded.append(front_face)
+                if front_face not in all_names:
+                    all_names.append(front_face)
 
-        # Create placeholders using expanded list (this determines WHERE clause)
-        placeholders = ','.join(['?' for _ in all_names_expanded])
+        # Create placeholders for SQL IN clause
+        placeholders = ','.join(['?' for _ in all_names])
 
-        # Query for exact matches - USE ORIGINAL list for parameters!
+        # Query for exact matches
         cursor.execute(f"""
             SELECT name, asciiName, colors, type, types, rarity, manaCost, hasFoil
             FROM cards 
             WHERE LOWER(name) IN ({placeholders})
                OR LOWER(asciiName) IN ({placeholders})
-        """, [name.lower() for name in all_names_original] * 2)  # ← USING ORIGINAL LIST
+        """, [name.lower() for name in all_names] * 2)
         
         # Put all results into a lookup dictionary
         card_db = {}
