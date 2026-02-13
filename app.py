@@ -820,6 +820,11 @@ def process_list():
                     colors = json.loads(result['colors']) if result['colors'] else []
                 except:
                     colors = []
+                    
+                try:
+                    types = json.loads(result['types']) if result['types'] else []
+                except:
+                    types = []
                 
                 rarity = result['rarity'].lower() if result['rarity'] else ''
                 if rarity in ['mythic', 'rare']:
@@ -847,11 +852,22 @@ def process_list():
                     front_type = type_str.split(' // ')[0]
                 else:
                     front_type = type_str
-                
-                is_land_front = 'Land' in front_type
-                
-                if is_land_front and len(all_colors) == 0:
-                    color_group = 'Land'
+                    
+                # Lands WITHOUT colors (basic lands, etc.)
+                # BUT: If it's a double-faced card where front is NOT a land, don't put in Land group
+                if 'Land' in types and len(all_colors) == 0:
+                    # Check if this is actually a land (not a double-faced card with land back)
+                    if is_double_faced:
+                        # Check if the FRONT face is a land
+                        front_type = type_str.split(' // ')[0] if ' // ' in type_str else type_str
+                        if 'Land' in front_type:
+                            color_group = 'Land'
+                        else:
+                            # Double-faced card with non-land front, land back - group by front
+                            pass  # Will be handled by normal color logic below
+                    else:
+                        # Regular land
+                        color_group = 'Land'
                 
                 if color_group == 'Unknown':
                     special_types = ["Token", "Emblem", "Scheme", "Conspiracy", 
@@ -896,121 +912,6 @@ def process_list():
                 }
                 
                 groups[rarity_group][color_group].append(card_entry)
-            
-            try:
-                colors = json.loads(result['colors']) if result['colors'] else []
-            except:
-                colors = []
-            
-            try:
-                types = json.loads(result['types']) if result['types'] else []
-            except:
-                types = []
-            
-            rarity = result['rarity'].lower() if result['rarity'] else ''
-            if rarity in ['mythic', 'rare']:
-                rarity_group = 'Mythic/Rare'
-            else:
-                rarity_group = 'Common/Uncommon'
-            
-            # Color group - FIXED: Check front face only for double-faced cards
-            color_group = 'Unknown'
-            
-            # For double-faced cards, extract just the front face name for analysis
-            display_name = result['name']
-            is_double_faced = ' // ' in display_name
-            
-            # Check mana cost for colors
-            mana_colors = set()
-            mana_cost = result['manaCost'] or ''
-            if mana_cost:
-                for symbol in ['W', 'U', 'B', 'R', 'G']:
-                    if f'{{{symbol}}}' in mana_cost:
-                        mana_colors.add(symbol)
-            
-            all_colors = set(colors) | mana_colors
-            
-            # Special Cards check (but NOT for double-faced cards' back faces)
-            type_str = result['type'] or ''
-            
-            # IMPORTANT: For double-faced cards, only consider the FIRST type
-            # Example: "Enchantment — Aura // Land" should be treated as Enchantment
-            if is_double_faced and ' // ' in type_str:
-                # Take only the front face type
-                type_str = type_str.split(' // ')[0]
-            
-            # Lands WITHOUT colors (basic lands, etc.)
-            # BUT: If it's a double-faced card where front is NOT a land, don't put in Land group
-            if 'Land' in types and len(all_colors) == 0:
-                # Check if this is actually a land (not a double-faced card with land back)
-                if is_double_faced:
-                    # Check if the FRONT face is a land
-                    front_type = type_str.split(' // ')[0] if ' // ' in type_str else type_str
-                    if 'Land' in front_type:
-                        color_group = 'Land'
-                    else:
-                        # Double-faced card with non-land front, land back - group by front
-                        pass  # Will be handled by normal color logic below
-                else:
-                    # Regular land
-                    color_group = 'Land'
-            
-            # Special Cards (but not if they're regular cards)
-            if color_group == 'Unknown':
-                special_types = ["Token", "Emblem", "Scheme", "Conspiracy", 
-                               "Phenomenon", "Vanguard", "Hero"]
-                
-                if any(special_type in type_str for special_type in special_types):
-                    # Check if it's ALSO a regular card type
-                    is_regular_card = any(regular_type in type_str for regular_type in 
-                                         ["Creature", "Planeswalker", "Instant", "Sorcery", 
-                                          "Enchantment", "Artifact", "Land", "Battle"])
-                    
-                    if not is_regular_card:
-                        color_group = 'Special Cards'
-            
-            # If still unknown, determine by color
-            if color_group == 'Unknown':
-                # For double-faced cards, check if front is Artifact
-                front_is_artifact = 'Artifact' in type_str.split(' // ')[0] if ' // ' in type_str else 'Artifact' in type_str
-                
-                # Colorless artifacts (no colors at all) AND front face is artifact
-                if front_is_artifact and len(all_colors) == 0:
-                    color_group = 'Artifact'
-                # Single color
-                elif len(all_colors) == 1:
-                    color_map = {'W': 'White', 'U': 'Blue', 'B': 'Black', 'R': 'Red', 'G': 'Green'}
-                    color_group = color_map.get(list(all_colors)[0], 'Unknown')
-                # Multicolor
-                elif len(all_colors) >= 2:
-                    color_group = 'Multicolor'
-                # Truly colorless (not artifact, not land)
-                elif len(all_colors) == 0:
-                    color_group = 'Colorless'
-                else:
-                    color_group = 'Unknown'
-            
-            display_name = result['name']
-            if entry['foil']:
-                if result['hasFoil'] == 1:
-                    display_name = f"{result['name']} (FOIL)"
-                else:
-                    display_name = f"{result['name']} (FOIL*)"
-            
-            card_entry = {
-                'name': display_name,
-                'type_line': result['type'] or '',
-                'mana_cost': result['manaCost'] or '',
-                'color_group': color_group,
-                'rarity_group': rarity_group,
-                'foil': entry['foil'],
-                'quantity': entry['quantity'],
-                'sort_key': result['name'].lower()
-            }
-            
-            # Store quantity in the card entry (NO duplicates)
-            card_entry['quantity'] = entry['quantity']
-            groups[rarity_group][color_group].append(card_entry)
         
         conn.close()
         
