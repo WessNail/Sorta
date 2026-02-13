@@ -654,10 +654,7 @@ def index():
 @app.route('/process_list', methods=['POST'])
 def process_list():
     
-    print(f"Card entries: {len(card_entries)}")
-    print(f"Unique card names: {len(unique_card_names)}")
-    print(f"All names original: {len(all_names_original)}")
-    print(f"All names expanded: {len(all_names_expanded)}")
+
     
     import sys
     print("🚀🚀🚀 PROCESS_LIST CALLED 🚀🚀🚀", flush=True)
@@ -703,6 +700,13 @@ def process_list():
                 })
         
         print(f"Processing {len(card_entries)} card entries")
+        
+        # DEBUGGING CODE
+        print(f"Card entries: {len(card_entries)}")
+        print(f"Unique card names: {len(unique_card_names)}")
+        print(f"All names original: {len(all_names_original)}")
+        print(f"All names expanded: {len(all_names_expanded)}")
+        ########################################################
         
         # Get database connection (auto-builds/updates if needed)
         try:
